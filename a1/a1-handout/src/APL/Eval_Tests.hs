@@ -67,17 +67,37 @@ tests =
         eval envEmpty (Pow (CstInt 2) (CstInt (-1)))
           @?= Left "Negative exponent",
       --
-      testCase "Eql (false)" $
+      testCase "Eql int (false)" $
         eval envEmpty (Eql (CstInt 2) (CstInt 3))
           @?= Right (ValBool False),
       --
-      testCase "Eql (true)" $
+      testCase "Eql int (true)" $
         eval envEmpty (Eql (CstInt 2) (CstInt 2))
           @?= Right (ValBool True),
+      --
+      testCase "Eql bool (false)" $
+        eval envEmpty (Eql (CstBool False) (CstBool True))
+          @?= Right (ValBool False),
+      --
+      testCase "Eql bool (true)" $
+        eval envEmpty (Eql (CstBool True) (CstBool True))
+          @?= Right (ValBool True),
+      --
+      testCase "Eql (invalid)" $
+        eval envEmpty (Eql (CstInt 1) (CstBool False))
+          @?= Left "Invalid operands to equality",
       --
       testCase "If" $
         eval envEmpty (If (CstBool True) (CstInt 2) (Div (CstInt 7) (CstInt 0)))
           @?= Right (ValInt 2),
+      --
+      testCase "IfThen" $
+        eval envEmpty (If (CstBool False) (CstInt 2) (CstInt 7))
+          @?= Right (ValInt 7),
+      --
+      testCase "IfNonBoolean" $
+        eval envEmpty (If (CstInt 6) (CstInt 2) (CstInt 7))
+          @?= Left "Non-boolean conditional.",
       --
       testCase "Let" $
         eval envEmpty (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
@@ -105,15 +125,39 @@ tests =
               (Lambda "y" (Add (Var "x") (Var "y"))))
                 @?= Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
       --
+      testCase "Lambda - FunExp failing" $
+        eval
+          envEmpty
+            (Apply ( Let
+              "x" (CstInt 2)
+              (Lambda "y" (Div (CstInt 2) (CstInt 0)))) (CstInt 3))
+                @?= Left "Division by zero",
+      --
+      testCase "Lambda - ArgExp failing" $
+        eval
+          envEmpty
+            (Apply ( Let
+              "x" (CstInt 2)
+              (Lambda "y" (Add (CstInt 2) (CstInt 0)))) (Pow (CstInt 2) (CstInt (-5))))
+                @?= Left "Negative exponent",
+      --
+      testCase "Lambda - BothExp failing showing order" $
+        eval
+          envEmpty
+            (Apply ( Let
+              "x" (CstInt 2)
+              (Lambda "y" (Div (CstInt "x") (CstInt 0)))) (Pow (CstInt 2) (CstInt (-5))))
+                @?= Left "Negative Exponent",
+      --
       testCase "Apply" $
         eval
           envEmpty
             (Apply
               ( Let "x" (CstInt 2)
-                (Lambda "y" (Add (Var "x") (Var "y")))) (CstInt 3))
-                  @?= Right (ValInt 5),
+                (Lambda "y" (Add (Var "x") (Var "y")))) ((CstInt 2)))
+                  @?= Right (ValInt 4),
       --
-      testCase "Apply (FAILING)" $
+      testCase "Apply - Failing with function value" $
         eval
           envEmpty
             (Apply
@@ -124,5 +168,11 @@ tests =
         eval
           envEmpty
             (TryCatch (CstInt 0) (CstInt 1))
-              @?= Right (ValInt 0)
+              @?= Right (ValInt 0),
+      --
+      testCase "TryCatch" $
+        eval
+          envEmpty
+            (TryCatch (Div (CstInt 2) (CstInt 0)) (CstInt 1))
+              @?= Right (ValInt 1)
     ]
