@@ -39,6 +39,7 @@ printExp exp' = case exp' of
     Eql e1 e2 -> twoExp e1 e2 "==" ""
     Apply e1 e2 -> twoExp e1 e2 "" ""
     TryCatch e1 e2 -> twoExp e1 e2 "catch" "try "
+    _ -> undefined
   where
     twoExp e1 e2 op pre = "(" ++ pre ++ printExp e1 ++ " " ++ op ++ " " ++ printExp e2 ++ ")"
 

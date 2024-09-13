@@ -90,19 +90,5 @@ eval env (Apply funExp argExp) =
     (Right _, _) -> Left "Trying to apply a non-function value"  -- If funExp is not a function
 eval env (TryCatch e1 e2) =
   case eval env e1 of
-    Left err -> eval env e2
+    Left _ -> eval env e2
     Right v -> Right $ v
-
-
--- eval env (Let var e1 e2)
--- ValFun Env VName Exp
-
---eval [] (Let (Var "f") (Lambda) (Lambda))
-
---( Let
--- "x" (CstInt 2)
--- (Lambda "y" (Add (Var "x") (Var "y"))))
---   @?= Right (ValFun [("x", ValInt 2)] "y" (Add (Var "x") (Var "y"))),
-
-
-eval [] (Let "f" (Lambda "self" (Apply (Var "self") (Var "self"))) (Apply (Var "f") (Var "f")))

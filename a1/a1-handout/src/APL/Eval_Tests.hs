@@ -146,8 +146,8 @@ tests =
           envEmpty
             (Apply ( Let
               "x" (CstInt 2)
-              (Lambda "y" (Div (CstInt "x") (CstInt 0)))) (Pow (CstInt 2) (CstInt (-5))))
-                @?= Left "Negative Exponent",
+              (Lambda "y" (Div (CstInt 2) (CstInt 0)))) (Pow (CstInt 2) (CstInt (-5))))
+                @?= Left "Negative exponent",
       --
       testCase "Apply" $
         eval
