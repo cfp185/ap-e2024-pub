@@ -2,7 +2,7 @@ module APL.Eval
   ( Val (..),
     eval,
     runEval,
-    Error,
+    Error
   )
 where
 
@@ -24,14 +24,16 @@ envExtend :: VName -> Val -> Env -> Env
 envExtend v val env = (v, val) : env
 
 envLookup :: VName -> Env -> Maybe Val
-envLookup v env = lookup v env
+envLookup = lookup
 
 stateEmpty :: State
-stateEmpty = []
+stateEmpty = ([],[])
 
 type Error = String
 
-type State = [String]
+type KeyVal = [(Val, Val)]
+
+type State = ([String], KeyVal)
 
 newtype EvalM a = EvalM (Env -> State -> (State, Either Error a))
 
@@ -55,7 +57,6 @@ instance Monad EvalM where
 askEnv :: EvalM Env
 askEnv = EvalM $ \env st -> (st, Right env)
 
-
 localEnv :: (Env -> Env) -> EvalM a -> EvalM a
 localEnv f (EvalM m) = EvalM $ \env -> m (f env)
 
@@ -69,20 +70,20 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
     (_ , Right x) -> (st, Right x)
 
 evalPrint :: String -> Val -> EvalM ()
-evalPrint s v = do
-  let output = s ++ ": " ++ showVal v
-  EvalM $ \_ st -> ((++ [output]) st ,Right())
+evalPrint s v = EvalM $ \_env (stList, kval) ->
+  let st = s ++ ": " ++ showVal v
+    in ((stList ++ [st], kval), Right ())
 
 showVal :: Val -> String
 showVal (ValInt i) = show i
 showVal (ValBool b) = show b
-showVal (ValFun _ _ _) = "#<fun>"
+showVal (ValFun {}) = "#<fun>"
 
 runEval :: EvalM a -> ([String], Either Error a)
-runEval (EvalM m) = m envEmpty stateEmpty
-  -- case m envEmpty stateEmpty of
-  --   (st, Left err) -> (st, Left err)
-  --   (st, Right m') -> (st, Right m')
+runEval (EvalM m) = do
+  case m envEmpty stateEmpty of
+    ((sList, key), Left err) -> (sList, Left err)
+    ((sList, key), Right m') -> (sList, Right m')
   
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -93,10 +94,32 @@ evalIntBinOp f e1 e2 = do
     (_, _) -> failure "Non-integer operand"
 
 evalIntBinOp' :: (Integer -> Integer -> Integer) -> Exp -> Exp -> EvalM Val
-evalIntBinOp' f e1 e2 =
-  evalIntBinOp f' e1 e2
+evalIntBinOp' f =
+  evalIntBinOp f'
   where
     f' x y = pure $ f x y
+
+evalKvGet :: Val -> EvalM Val
+evalKvGet k = do
+  (_, kval) <- EvalM $ \_env st -> (st, Right st)
+  case lookup k kval of
+    Just v -> pure v
+    Nothing  -> failure $ "Invalid key: " ++ show k
+
+
+evalKvPut :: Val -> Val -> EvalM ()
+evalKvPut k v = do --EvalM $ \ (stList, kval) ->
+  --vOld <- evalKvGet k
+  case evalKvGet k of 
+    (_, Left err) -> EvalM $ \_  (stList, kval) -> ((stList, kval ++ [(k, v)]), Right ()) 
+    (v', Right _) -> EvalM $ \_  (stList, kval) ->  ((stList, kval ++ [(k, v')]), Right ())
+
+-- evalPrint :: String -> Val -> EvalM ()
+-- evalPrint s v = EvalM $ \_env (stList, kval) ->
+--   let st = s ++ ": " ++ showVal v
+--     in ((stList ++ [st], kval), Right ())
+
+
 
 eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x
@@ -151,4 +174,24 @@ eval (TryCatch e1 e2) =
 eval (Print s e) = do
     v <- eval e  -- First evaluate the expression `e` to get its value.
     evalPrint s v
-    return v-- Return the value as per the assignment.
+    pure v-- Return the value as per the assignment.
+eval (KvPut kExp vExp) = do 
+  k <- eval kExp
+  v <- eval vExp 
+  evalKvPut k v
+  pure v
+eval (KvGet exp) = do
+  k <- eval exp
+  case evalKvGet k of
+    (_, Left err) -> failure "key does not exist"
+    ((_, (_ ,v')), Right()) -> pure v'
+
+-- [(val, val)]
+
+-- (State, Either Error Val)
+
+-- (State, V)
+
+
+--pro tip: the monad you use for CheckExpshould be based on a READER monad (Not state)
+  --fra TA Robert:)
