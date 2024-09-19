@@ -28,106 +28,122 @@ envLookup v env = lookup v env
 
 type Error = String
 
-
-newtype EvalM a = EvalM (Either Error a)
-  deriving Show
+newtype EvalM a = EvalM (Env -> Either Error a)
 
 instance Monad EvalM where
-  EvalM x >>= f = EvalM $ case x of
-    Left err -> Left err
-    Right x' ->
-      let EvalM y = f x'
-        in y
+    EvalM x >>= f = EvalM $ \env ->
+      case x env of
+        Left err -> Left err
+        Right x' ->
+          let EvalM y = f x'
+            in y env
 
 instance Applicative EvalM where
-  pure x                              = EvalM $ Right x
-  EvalM (Left e)  <*> _               = EvalM (Left e)
-  _               <*> EvalM (Left e)  = EvalM (Left e)
-  EvalM (Right f) <*> EvalM (Right x) = EvalM (Right $ f x)
+  pure x = EvalM $ \_env -> Right x
+
+  EvalM ef <*> EvalM ex = EvalM $ \env ->
+    case (ef env, ex env) of
+      (Left err, _)  -> Left err
+      (_, Left err) -> Left err
+      (Right f, Right x) -> Right (f x)
 
 instance Functor EvalM where
-  fmap _ (EvalM (Left e))  = EvalM $ Left e
-  fmap f (EvalM (Right x)) = EvalM $ Right $ f x
+  fmap f (EvalM x) =
+    EvalM $ \env -> case x env of
+      Right v -> Right $ f v
+      Left err -> Left err
 
 failure :: String -> EvalM a
-failure s = EvalM $ Left s
+--failure s = EvalM $ Left s
+failure s = EvalM $ \env -> Left s
 
 catch :: EvalM a -> EvalM a -> EvalM a
-catch (EvalM m1) (EvalM m2) = EvalM $
-                      case m1 of
-                        Left _ -> m2
-                        Right m1 -> Right m1
+--catch (EvalM m1) (EvalM m2) = EvalM $
+catch (EvalM m1) (EvalM m2) = EvalM $ \env ->
+                      case (m1 env) of
+                        Left _ -> m2 env
+                        Right m1' -> Right m1'
 
-runEval :: EvalM a -> Either Error a
-runEval (EvalM x) = x
+runEval :: EvalM a -> EvalM (Env -> Either Error a)
+runEval (EvalM x) = EvalM $ \env -> Right x
 
-eval :: Env -> Exp -> EvalM Val
-eval _ (CstInt x) = pure $ ValInt x
-eval _ (CstBool x) = pure $ ValBool x
-eval env (Var vname) = do
-                        case (envLookup vname env) of
-                          Just x -> pure x
-                          Nothing -> failure ("Non-existing variable: " ++ vname)
-eval env (Add e1 e2) = do
-                        x <- eval env e1
-                        y <- eval env e2
+askEnv :: EvalM Env
+askEnv = EvalM $ \env -> Right env
+
+localEnv :: (Env -> Env) -> EvalM a -> EvalM a
+localEnv temp_env (EvalM e) = EvalM $ \env -> e (temp_env env)
+
+eval :: Exp -> EvalM Val
+eval (CstInt x) = pure $ ValInt x
+eval (CstBool x) = pure $ ValBool x
+eval (Var vname) = do
+                      env <- askEnv
+                      case envLookup vname env of
+                        Just x -> pure x
+                        Nothing -> failure $ ("Non-existing variable: " ++ vname)
+eval (Add e1 e2) = do
+                        x <- eval e1
+                        y <- eval e2
                         case (x, y) of
                           (ValInt x', ValInt y') -> pure $ ValInt $ x'+ y'
                           _ -> failure "Non-integer operand"
-eval env (Sub e1 e2) = do
-                        x <- eval env e1
-                        y <- eval env e2
+eval (Sub e1 e2) = do
+                        x <- eval e1
+                        y <- eval e2
                         case (x ,y) of
                           (ValInt x', ValInt y') -> pure $ ValInt $ x' - y'
                           _ -> failure "Non-integer operand"
-eval env (Mul e1 e2) = do
-                        x <- eval env e1
-                        y <- eval env e2
+eval (Mul e1 e2) = do
+                        x <- eval e1
+                        y <- eval e2
                         case (x ,y) of
                           (ValInt x', ValInt y') -> pure $ ValInt $ x' * y'
                           _ -> failure "Non-integer operand"
-eval env (Div e1 e2) = do
-                        x <- eval env e1
-                        y <- eval env e2
+eval (Div e1 e2) = do
+                        x <- eval e1
+                        y <- eval e2
                         case (x ,y) of
                           (ValInt x', ValInt 0) -> failure "Div 0 error"
                           (ValInt x', ValInt y') -> pure $ ValInt $ x' `div` y'
                           _ -> failure "Non-integer operand"
-eval env (Pow e1 e2) = do
-                        x <- eval env e1
-                        y <- eval env e2
+eval (Pow e1 e2) = do
+                        x <- eval e1
+                        y <- eval e2
                         case (x ,y) of
                           (ValInt x', ValInt y') ->
                             if y' < 0
                               then failure "Negative exponent"
                               else pure $ ValInt $ x' ^ y'
                           _ -> failure "Non-integer operand"
-eval env (Eql e1 e2) =  do
-                        x <- eval env e1
-                        y <- eval env e2
+eval (Eql e1 e2) =  do
+                        x <- eval e1
+                        y <- eval e2
                         case (x, y) of
                           (ValInt x', ValInt y') -> -- || ((ValBool x', ValBool y')) ->
                             if x' == y'
                               then pure $ ValBool True
                             else pure $ ValBool False
                           _ -> failure "Non-integer operand"
-eval env (If cond e1 e2) =  do
-                        cond' <- eval env cond
+eval (If cond e1 e2) =  do
+                        cond' <- eval cond
                         case cond' of
-                          (ValBool True) -> eval env e1
-                          (ValBool False) -> eval env e2
+                          (ValBool True) -> eval e1
+                          (ValBool False) -> eval e2
                           _ -> failure "Non-boolean operand"
-eval env (Let var e1 e2) = do
-                        e1' <- eval env e1
-                        eval (envExtend var e1' env) e2
-eval env (Lambda vname e1) = pure $ (ValFun env vname e1)
-eval env (Apply funExp argExp) = do
-                        funExp' <- eval env funExp
-                        argExp' <- eval env argExp
+eval (Let var e1 e2) = do
+                        e1' <- eval e1
+                        localEnv (envExtend var e1') $ eval e2
+eval (Lambda vname e1) = do
+                          env <- askEnv
+                          pure $ (ValFun env vname e1)
+eval (Apply funExp argExp) = do
+                        funExp' <- eval funExp
+                        argExp' <- eval argExp
                         case (funExp', argExp') of
-                          (ValFun env' vname e1, v) ->
-                            eval (envExtend vname v env') e1  -- Apply the function
-                          ( _, _) -> failure "Trying to apply a non-function value"
-eval env (TryCatch e1 e2) =
-                        eval env e1 `catch` eval env e2
+                          (ValFun f_env var body, arg) ->
+                            localEnv (const $ envExtend var arg f_env) $ eval body
+                          (_, _) ->
+                            failure "Cannot apply non-function"
+eval (TryCatch e1 e2) =
+                        eval e1 `catch` eval e2
 
