@@ -83,6 +83,11 @@ evalTests =
           (TryCatch (Div (CstInt 7) (CstInt 0)) (CstBool True))
           @?= Right (ValBool True),
       --
+      testCase "TryCatch e1 failure" $
+        evalWithOutput
+          (TryCatch (Print "x" (Div (CstInt 7) (CstInt 0))) (Print "y" (CstInt 100)))
+          @?= (["y: 100"],Right (ValInt 100)),
+      --
       testCase "KvGet invalid key" $
         eval' (KvGet (CstInt 2))
           @?= Left "Invalid key: ValInt 2",

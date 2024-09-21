@@ -8,7 +8,7 @@ where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (ap, liftM)
-import Control.Applicative (ZipList(getZipList))
+--import Control.Applicative (ZipList(getZipList))
 
 data Val
   = ValInt Integer
@@ -20,8 +20,6 @@ type Env = [(VName, Val)]
 
 envEmpty :: Env
 envEmpty = []
-
--- 
 
 envExtend :: VName -> Val -> Env -> Env
 envExtend v val env = (v, val) : env
@@ -44,7 +42,7 @@ instance Functor EvalM where
   fmap = liftM
 
 instance Applicative EvalM where
-  pure x = EvalM $ \env s -> (s, Right x)
+  pure x = EvalM $ \_env s -> (s, Right x)
   (<*>) = ap
 
 instance Monad EvalM where
@@ -70,11 +68,19 @@ failure s = EvalM $ \_env st -> (st, Left s)
 --     (_, Left _) -> m2 env st
 --     (_ , Right x) -> (st, Right x)
 
+-- catch :: EvalM a -> EvalM a -> EvalM a
+-- catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
+--   case m1 env st of
+--     (newSt, Left _) -> m2 env newSt
+--     (newSt, Right x) -> (newSt, Right x)
+
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
-  case m1 env st of
-    (newSt, Left _) -> m2 env newSt
-    (newSt, Right x) -> (newSt, Right x)
+  let (newSt, result) = m1 env st
+  in case result of
+    Left _ -> m2 env st  -- Use the original state if m1 fails
+    Right x -> (newSt, Right x)
+
 
 evalPrint :: String -> Val -> EvalM ()
 evalPrint s v = EvalM $ \_env (stList, kval) ->
@@ -184,4 +190,5 @@ eval (KvPut kExp vExp) = do
 eval (KvGet exp) = do
   k <- eval exp
   evalKvGet k
+
 
