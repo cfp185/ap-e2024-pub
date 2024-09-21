@@ -6,12 +6,16 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
 eval' :: Exp -> Either Error Val
-eval' = runEval . eval
+eval' exp = snd $ runEval (eval exp)
+
+-- Function to handle printed output (only used for Print tests)
+evalWithOutput :: Exp -> ([String], Either Error Val)
+evalWithOutput exp = runEval (eval exp)
 
 evalTests :: TestTree
 evalTests =
   testGroup
-    "EValuation"
+    "Evaluation"
     [ testCase "Add" $
         eval' (Add (CstInt 2) (CstInt 5))
           @?= Right (ValInt 7),
@@ -77,8 +81,37 @@ evalTests =
       testCase "TryCatch" $
         eval'
           (TryCatch (Div (CstInt 7) (CstInt 0)) (CstBool True))
-          @?= Right (ValBool True)
-    ]
+          @?= Right (ValBool True),
+      --
+      testCase "KvGet invalid key" $
+        eval' (KvGet (CstInt 2))
+          @?= Left "Invalid key: ValInt 2",
+      --
+      testCase "KvGet and KvPut ValBool True" $
+        eval'(Let "x" (KvPut (CstInt 0) (CstBool True)) (KvGet (CstInt 0)))
+          @?=  Right (ValBool True),
+      --
+      testCase "KvGet and KvPut Invalid key" $
+        eval' (Let "x" (KvPut (CstInt 0) (CstBool True)) (KvGet (CstInt 1)))
+          @?= Left "Invalid key: ValInt 1",
+      --
+      testCase "KvGet and KvPut ValBool False" $
+        eval'(Let "y" (KvPut (CstInt 0) (CstBool False)) (KvGet (CstInt 0)))
+          @?= Right (ValBool False),
+      --
+      testCase "Print base case" $
+        evalWithOutput (Print "foo" $ CstInt 2)
+          @?= (["foo: 2"], Right (ValInt 2)),
+      --
+      testCase "Print 2 strings" $
+        evalWithOutput (Let "x" (Print "foo" $ CstInt 2) (Print "bar" $ CstInt 3))
+          @?= (["foo: 2", "bar: 3"], Right (ValInt 3)),
+      --
+      testCase "Print unknown var" $
+        evalWithOutput (Let "x" (Print "foo" $ CstInt 2) (Var "bar"))
+          @?= (["foo: 2"], Left "Unknown variable: bar")
+      ]
+
 
 tests :: TestTree
 tests = testGroup "APL" [evalTests]

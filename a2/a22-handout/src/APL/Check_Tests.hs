@@ -1,26 +1,51 @@
 module APL.Check_Tests (tests) where
 
-import APL.AST (Exp (..))
+import APL.AST (Exp(..))
 import APL.Check (checkExp)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertFailure, testCase, (@?=))
+import Test.Tasty.HUnit (testCase, (@?=))
 
--- Assert that the provided expression should pass the type checker.
-testPos :: Exp -> TestTree
-testPos e =
-  testCase (show e) $
-    checkExp e @?= Nothing
-
--- Assert that the provided expression should fail the type checker.
-testNeg :: Exp -> TestTree
-testNeg e =
-  testCase (show e) $
-    case checkExp e of
-      Nothing -> assertFailure "expected error"
-      Just _ -> pure ()
+checkTests :: TestTree
+checkTests =
+  testGroup
+    "Check Expressions"
+    [
+      testCase "Check valid int constant" $
+        checkExp (CstInt 42) @?= Nothing,
+      --
+      testCase "Check valid bool constant" $
+        checkExp (CstBool True) @?= Nothing,
+      --
+      testCase "Check valid variable" $
+        checkExp (Let "x" (CstInt 42) (Var "x")) @?= Nothing,
+      --
+      testCase "Check undefined variable" $
+        checkExp (Var "y") @?= Just "Unknown variable: y",
+      --
+      testCase "Check addition of two integers" $
+        checkExp (Add (CstInt 1) (CstInt 2)) @?= Nothing,
+      --
+      testCase "Check subtraction with two variables" $
+        checkExp (Sub (Var "x") (Var "y")) @?= Just "Unknown variable: x",
+      --
+      testCase "Check if with a boolean condition" $
+        checkExp (If (CstBool True) (CstInt 1) (CstInt 0)) @?= Nothing,
+      --
+      testCase "Check lambda with valid body" $
+        checkExp (Lambda "x" (Add (Var "x") (CstInt 1))) @?= Nothing,
+      --
+      testCase "Check lambda with undefined variable" $
+        checkExp (Lambda "x" (Add (Var "x") (Var "y"))) @?= Just "Unknown variable: y",
+      --
+      testCase "Check KvPut with valid key-value" $
+        checkExp (KvPut (CstInt 0) (CstBool True)) @?= Nothing,
+      --
+      testCase "Check KvGet with valid key" $
+        checkExp (KvGet (CstInt 0)) @?= Nothing,
+      --
+      testCase "Check KvPut" $
+        checkExp (Let "x" (KvPut (CstInt 0) (CstBool True)) (KvGet (CstInt 0))) @?= Nothing
+    ]
 
 tests :: TestTree
-tests =
-  testGroup
-    "Checking"
-    []
+tests = testGroup "APL Check" [checkTests]

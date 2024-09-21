@@ -8,6 +8,7 @@ where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (ap, liftM)
+import Control.Applicative (ZipList(getZipList))
 
 data Val
   = ValInt Integer
@@ -38,12 +39,10 @@ type State = ([String], KeyVal)
 newtype EvalM a = EvalM (Env -> State -> (State, Either Error a))
 
 instance Functor EvalM where
-  fmap :: (a -> b) -> EvalM a -> EvalM b
   fmap = liftM
 
 instance Applicative EvalM where
   pure x = EvalM $ \env s -> (s, Right x)
-  (<*>) :: EvalM (a -> b) -> EvalM a -> EvalM b
   (<*>) = ap
 
 instance Monad EvalM where
@@ -52,7 +51,7 @@ instance Monad EvalM where
       (st, Left err) -> (st, Left err)
       (st, Right x') ->
         let EvalM y = f x'
-         in y env st
+        in y env st
 
 askEnv :: EvalM Env
 askEnv = EvalM $ \env st -> (st, Right env)
@@ -84,7 +83,7 @@ runEval (EvalM m) = do
   case m envEmpty stateEmpty of
     ((sList, key), Left err) -> (sList, Left err)
     ((sList, key), Right m') -> (sList, Right m')
-  
+
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
   v1 <- eval e1
@@ -108,18 +107,12 @@ evalKvGet k = do
 
 
 evalKvPut :: Val -> Val -> EvalM ()
-evalKvPut k v = do --EvalM $ \ (stList, kval) ->
-  --vOld <- evalKvGet k
-  case evalKvGet k of 
-    (_, Left err) -> EvalM $ \_  (stList, kval) -> ((stList, kval ++ [(k, v)]), Right ()) 
-    (v', Right _) -> EvalM $ \_  (stList, kval) ->  ((stList, kval ++ [(k, v')]), Right ())
-
--- evalPrint :: String -> Val -> EvalM ()
--- evalPrint s v = EvalM $ \_env (stList, kval) ->
---   let st = s ++ ": " ++ showVal v
---     in ((stList ++ [st], kval), Right ())
-
-
+evalKvPut k v = do
+  (stList, kval) <- EvalM $ \_env st -> (st, Right st)
+  let kval' = case lookup k kval of
+                Just _  -> map (\(k', v') -> if k' == k then (k, v) else (k', v')) kval
+                Nothing -> (k, v) : kval
+  EvalM $ \_env _ -> ((stList, kval'), Right ())
 
 eval :: Exp -> EvalM Val
 eval (CstInt x) = pure $ ValInt x
@@ -175,23 +168,11 @@ eval (Print s e) = do
     v <- eval e  -- First evaluate the expression `e` to get its value.
     evalPrint s v
     pure v-- Return the value as per the assignment.
-eval (KvPut kExp vExp) = do 
+eval (KvPut kExp vExp) = do
   k <- eval kExp
-  v <- eval vExp 
+  v <- eval vExp
   evalKvPut k v
   pure v
 eval (KvGet exp) = do
   k <- eval exp
-  case evalKvGet k of
-    (_, Left err) -> failure "key does not exist"
-    ((_, (_ ,v')), Right()) -> pure v'
-
--- [(val, val)]
-
--- (State, Either Error Val)
-
--- (State, V)
-
-
---pro tip: the monad you use for CheckExpshould be based on a READER monad (Not state)
-  --fra TA Robert:)
+  evalKvGet k
