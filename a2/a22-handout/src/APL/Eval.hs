@@ -62,17 +62,20 @@ localEnv f (EvalM m) = EvalM $ \env -> m (f env)
 failure :: String -> EvalM a
 failure s = EvalM $ \_env st -> (st, Left s)
 
--- catch :: EvalM a -> EvalM a -> EvalM a
--- catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
---   case m1 env st of
---     (_, Left _) -> m2 env st
---     (_ , Right x) -> (st, Right x)
 
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
   case m1 env st of
     (newSt, Left _) -> m2 env newSt
     (newSt, Right x) -> (newSt, Right x)
+
+-- This is the updated and working code for question 3 in the report
+-- catch :: EvalM a -> EvalM a -> EvalM a
+-- catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
+--   let (newSt, result) = m1 env st
+--   in case result of
+--     Left _ -> m2 env st  -- Use the original state if m1 fails
+--     Right x -> (newSt, Right x)
 
 evalPrint :: String -> Val -> EvalM ()
 evalPrint s v = EvalM $ \_env (stList, kval) ->
