@@ -64,11 +64,17 @@ localEnv f (EvalM m) = EvalM $ \env -> m (f env)
 failure :: String -> EvalM a
 failure s = EvalM $ \_env st -> (st, Left s)
 
+-- catch :: EvalM a -> EvalM a -> EvalM a
+-- catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
+--   case m1 env st of
+--     (_, Left _) -> m2 env st
+--     (_ , Right x) -> (st, Right x)
+
 catch :: EvalM a -> EvalM a -> EvalM a
 catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
   case m1 env st of
-    (_, Left _) -> m2 env st
-    (_ , Right x) -> (st, Right x)
+    (newSt, Left _) -> m2 env newSt
+    (newSt, Right x) -> (newSt, Right x)
 
 evalPrint :: String -> Val -> EvalM ()
 evalPrint s v = EvalM $ \_env (stList, kval) ->
