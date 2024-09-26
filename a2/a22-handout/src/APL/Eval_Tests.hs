@@ -6,11 +6,11 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
 eval' :: Exp -> Either Error Val
-eval' exp = snd $ runEval (eval exp)
+eval' e = snd $ runEval (eval e)
 
 -- Function to handle printed output (only used for Print tests)
 evalWithOutput :: Exp -> ([String], Either Error Val)
-evalWithOutput exp = runEval (eval exp)
+evalWithOutput e = runEval (eval e)
 
 evalTests :: TestTree
 evalTests =
@@ -87,6 +87,11 @@ evalTests =
         evalWithOutput
           (TryCatch (Print "x" (Div (CstInt 7) (CstInt 0))) (Print "y" (CstInt 100)))
           @?= (["y: 100"],Right (ValInt 100)),
+      --
+      testCase "TryCatch e1 failure with Let" $
+        evalWithOutput
+          (TryCatch (Let "temp" (Print "x" (CstInt 7)) (Div (CstInt 7) (CstInt 0))) (Print "y" (CstInt 100)))
+          @?= (["x: 7","y: 100"],Right (ValInt 100)),
       --
       testCase "KvGet invalid key" $
         eval' (KvGet (CstInt 2))

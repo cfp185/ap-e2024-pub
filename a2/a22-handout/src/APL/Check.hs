@@ -59,12 +59,12 @@ check (Lambda var body) = do
     localEnv (var:) $ check body
 check (Apply e1 e2) = check e1 >> check e2
 check (TryCatch e1 e2) = check e1 >> check e2
-check (Print s e) = check e
+check (Print _ e) = check e
 check (KvPut kExp vExp) = check kExp >> check vExp
-check (KvGet exp) = check exp
+check (KvGet e) = check e
 
 checkExp :: Exp -> Maybe Error
-checkExp exp =
-    case runCheck (check exp) [] of
+checkExp e =
+    case runCheck (check e) [] of
         Left err -> Just err
         Right _ -> Nothing

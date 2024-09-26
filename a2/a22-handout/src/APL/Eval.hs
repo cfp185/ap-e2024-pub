@@ -8,7 +8,6 @@ where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (ap, liftM)
---import Control.Applicative (ZipList(getZipList))
 
 data Val
   = ValInt Integer
@@ -48,10 +47,10 @@ instance Applicative EvalM where
 instance Monad EvalM where
   EvalM x >>= f = EvalM $ \env st ->
     case x env st of
-      (st, Left err) -> (st, Left err)
-      (st, Right x') ->
+      (st', Left err) -> (st', Left err)
+      (st', Right x') ->
         let EvalM y = f x'
-        in y env st
+        in y env st'
 
 askEnv :: EvalM Env
 askEnv = EvalM $ \env st -> (st, Right env)
@@ -89,8 +88,8 @@ showVal (ValFun {}) = "#<fun>"
 runEval :: EvalM a -> ([String], Either Error a)
 runEval (EvalM m) = do
   case m envEmpty stateEmpty of
-    ((sList, key), Left err) -> (sList, Left err)
-    ((sList, key), Right m') -> (sList, Right m')
+    ((sList, _key), Left err) -> (sList, Left err)
+    ((sList, _key), Right m') -> (sList, Right m')
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -173,16 +172,16 @@ eval (Apply e1 e2) = do
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
 eval (Print s e) = do
-    v <- eval e  -- First evaluate the expression `e` to get its value.
+    v <- eval e
     evalPrint s v
-    pure v-- Return the value as per the assignment.
+    pure v
 eval (KvPut kExp vExp) = do
   k <- eval kExp
   v <- eval vExp
   evalKvPut k v
   pure v
-eval (KvGet exp) = do
-  k <- eval exp
+eval (KvGet e) = do
+  k <- eval e
   evalKvGet k
 
 
