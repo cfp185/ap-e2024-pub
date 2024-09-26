@@ -1,0 +1,47 @@
+Test suite a3-test: RUNNING...
+Parsing
+  Constants
+    123:                                   OK
+     123:                                  OK
+    123 :                                  OK
+    123f:                                  OK
+    true:                                  OK
+    false:                                 OK
+  Basic operators
+    x+y:                                   OK
+    x-y:                                   OK
+    x*y:                                   OK
+    x/y:                                   OK
+  Operator priority
+    x+y+z:                                 OK
+    x+y-z:                                 OK
+    x+y*z:                                 OK
+    x*y*z:                                 OK
+    x/y/z:                                 OK
+  Conditional expressions
+    if x then y else z:                    OK
+    if x then y else if x then y else z:   OK
+    if x then (if x then y else z) else z: OK
+    1 + if x then y else z:                OK
+  Lexing edge cases
+    2 :                                    OK
+     2:                                    OK
+  Funciton application
+    x y z:                                 OK
+    x(y z):                                OK
+  Equality and power operators
+    x*y**z:                                OK
+    x+y==y+x:                              OK
+  Printing, putting, and getting
+    put x y:                               OK
+    get x + y:                             OK
+    getx:                                  OK
+    print "foo" x:                         OK
+  Lambdas, let-binding and try-catch
+    let x = y in z:                        OK
+    \ x -> x + 1:                          OK
+    try 1+1 catch 2+2:                     OK
+
+All 32 tests passed (0.01s)
+Test suite a3-test: PASS
+Test suite logged to: /Users/juliebrinch/AP-Exercises/ap-e2024-pub/a3/a3-handout/dist-newstyle/build/aarch64-osx/ghc-9.8.2/a3-1.0.0.0/t/a3-test/test/a3-1.0.0.0-a3-test.log
