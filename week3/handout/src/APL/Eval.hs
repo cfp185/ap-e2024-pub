@@ -44,7 +44,7 @@ instance Monad EvalM where
       Left err -> Left err
       Right x' ->
         let EvalM y = f x'
-         in y env
+        in y env
 
 askEnv :: EvalM Env
 askEnv = EvalM $ \env -> Right env

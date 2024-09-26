@@ -14,7 +14,6 @@ import Text.Megaparsec
     notFollowedBy,
     parse,
     parseTest,
-
     satisfy,
     some,
     try,
@@ -24,13 +23,67 @@ import Text.Megaparsec.Char (space)
 -- Do not change this definition.
 type Parser = Parsec Void String
 
+-- pExp :: Parser pExp
+-- pExp = choice
+--   [
+--     CstInt <$> lInteger,
+--     Var <$> lVName,
+--     CstBool <$> lBool
+--   ]
+
+pAtom :: Parser Exp
+pAtom = choice
+    [ CstInt <$> lInteger,
+      Var <$> lVName,
+      CstBool <$> lBool,
+      lString "(" *> pExp <* lString ")"
+    ]
+
+pLExp :: Parser Exp
+pLExp =
+  choice
+    [ If
+        <$> (lKeyword "if" *> pExp0)
+        <*> (lKeyword "then" *> pExp0)
+        <*> (lKeyword "else" *> pExp0),
+      pAtom
+    ]
+
+pExp1 :: Parser Exp
+pExp1 = pLExp >>= chain
+  where
+    chain x =
+      choice
+      [ do
+          lString "*"
+          y <- pLExp
+          chain $ Mul x y,
+        do
+          lString "/"
+          y <- pLExp
+          chain $ Div x y,
+        pure x
+      ]
+
+pExp0 :: Parser Exp
+pExp0 = pExp1 >>= chain
+  where
+    chain x =
+      choice
+      [ do
+          lString "+"
+          y <- pExp1
+          chain $ Add x y,
+        do
+          lString "-"
+          y <- pExp1
+          chain $ Sub x y,
+        pure x
+      ]
+
 pExp :: Parser Exp
-pExp = choice
-  [
-    CstInt <$> lInteger,
-    Var <$> lVName,
-    CstBool <$> lBool
-  ]
+pExp = pExp0
+
 
 
 lexeme :: Parser a -> Parser a
@@ -45,6 +98,9 @@ parseAPL fname s = case parse (space *> pExp <* eof) fname s of
 lInteger :: Parser Integer
 lInteger = lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlpha)
 
+lVar :: Parser String
+lVar = lexeme $ some $ satisfy isAlpha
+
 --lVName :: Parser VName
 --lVName = lexeme $ (:) <$> satisfy isAlpha <*> many (satisfy isAlphaNum)
 
@@ -52,7 +108,7 @@ lInteger = lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy is
 -- lVName = lexeme $ do
 --   c <- satisfy isAlpha
 --   cs <- many $ satisfy isAlphaNum
---   cs <- 
+--   cs <-
 --   pure $ c:cs
 
 lKeyword :: String -> Parser ()
@@ -76,6 +132,6 @@ lVName = lexeme $ do
     then fail "keyword"
     else pure v
 
+lString :: String -> Parser ()
+lString s = lexeme $ void $ chunk s
 
-
---if, then, else, true, false, let, in, try, catch, print, put, get
