@@ -4,7 +4,7 @@ import APL.AST (Exp (..))
 import APL.Eval (eval)
 import APL.InterpIO (runEvalIO)
 import APL.InterpPure (runEval)
-import APL.Monad (Error, Val (..))
+import APL.Monad (Error, Val (..), localEnv, askEnv)
 import Control.Concurrent (threadDelay)
 import Control.Exception (bracket)
 import GHC.IO.Handle (hDuplicate, hDuplicateTo)
@@ -14,22 +14,61 @@ import Test.Tasty (TestTree, localOption, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 import Test.Tasty.Runners (NumThreads (..))
 
-eval' :: Exp -> Val
+
+eval' :: Exp -> ([String], Either Error Val)
 eval' = runEval . eval
 
-evalIO' :: Exp -> IO (Either Error Val)
-evalIO' = runEvalIO . eval
+-- evalIO' :: Exp -> IO (Either Error Val)
+-- evalIO' = runEvalIO . eval
+
+-- eval' :: Exp -> Either Error Val
+-- eval' e = snd $ runEval (eval e)
+
+-- eval' :: Exp -> Either Error Val
+-- eval' e = case runEval (eval e) of
+  -- (_, result) -> result
+
+-- evalIO' :: Exp -> IO (Either Error Val)
+-- evalIO' = runEvalIO . eval
+
 
 tests :: TestTree
 tests = testGroup "Free monad interpreters" [pureTests, ioTests']
   where
     ioTests' = localOption (NumThreads 1) ioTests
 
+-- pureTests :: TestTree
+-- pureTests =
+  -- testGroup
+    -- "Pure interpreter"
+    -- [ testCase "Let" $
+      -- -- runEval . eval
+      -- eval'
+        -- (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
+        -- @?= ValInt 5,
+      -- ---
+      -- testCase "localEnv" $
+        -- runEval
+          -- ( localEnv (const [("x", ValInt 1)]) $ askEnv
+        -- )
+          -- @?= [("x", ValInt 1)]]
+
 pureTests :: TestTree
 pureTests =
   testGroup
     "Pure interpreter"
-    []
+    [ testCase "localEnv" $
+        runEval
+          ( localEnv (const [("x", ValInt 1)]) $
+              askEnv
+          )
+          @?= ([], Right [("x", ValInt 1)]),
+      --
+      testCase "Let" $
+        eval' (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
+          @?= ([], Right (ValInt 5))
+    ]
+
 
 ioTests :: TestTree
 ioTests =
