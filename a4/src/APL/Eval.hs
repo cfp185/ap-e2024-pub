@@ -5,6 +5,8 @@ where
 
 import APL.AST (Exp (..))
 import APL.Monad
+import APL.InterpPure
+import APL.InterpIO
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
@@ -71,3 +73,17 @@ eval (Apply e1 e2) = do
       failure "Cannot apply non-function"
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
+eval (Print s e) = do
+  v <- eval e
+  evalPrint (s ++ show v)  -- Combine the string and the value
+  pure v
+eval (KvPut kExp vExp) = do
+  k <- eval kExp
+  v <- eval vExp
+  evalKvPut k v
+  pure v
+eval (KvGet e) = do
+  k <- eval e
+  evalKvGet k
+
+

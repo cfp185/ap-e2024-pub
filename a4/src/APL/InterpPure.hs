@@ -12,5 +12,21 @@ runEval = runEval' envEmpty stateInitial
     runEval' r _ (Free (StatePutOp s' m)) = runEval' r s' m
     runEval' r s (Free (PrintOp p m)) =
       let (ps, res) = runEval' r s m
-       in (p : ps, res)
+      in (p : ps, res)
     runEval' _ _ (Free (ErrorOp e)) = ([], Left e)
+    runEval' r s (Free (TryCatchOp m1 m2)) =
+      let (logs1, res1) = runEval' r s m1
+      in case res1 of
+          Left _ -> runEval' r s m2
+          Right _ -> (logs1, res1)
+    runEval' r s (Free (KvGetOp key k)) =
+      case lookup key s of
+        Just val -> runEval' r s (k val)
+        Nothing -> ([], Left $ "Key not found: " ++ show key)
+    runEval' r s (Free (KvPutOp key val m)) =
+      let newState = (key, val) : filter (\(k, _) -> k /= key) s
+      in runEval' r newState m
+
+
+-- :m *APL.Eval *APL.AST *APL.InterpPure *APL.InterpIO
+

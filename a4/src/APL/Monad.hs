@@ -76,6 +76,9 @@ data EvalOp a
   | StatePutOp State a
   | PrintOp String a
   | ErrorOp Error
+  | TryCatchOp a a
+  | KvGetOp Val (Val -> a)
+  | KvPutOp Val Val a
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
@@ -83,6 +86,9 @@ instance Functor EvalOp where
   fmap f (StatePutOp s m) = StatePutOp s $ f m
   fmap f (PrintOp p m) = PrintOp p $ f m
   fmap _ (ErrorOp e) = ErrorOp e
+  fmap f (TryCatchOp m1 m2) = TryCatchOp (f m1) (f m2)
+  fmap f (KvGetOp key k) = KvGetOp key $ f . k
+  fmap f (KvPutOp key val m) = KvPutOp key val $ f m
 
 type EvalM a = Free EvalOp a
 
@@ -117,13 +123,43 @@ failure :: String -> EvalM a
 failure = Free . ErrorOp
 
 catch :: EvalM a -> EvalM a -> EvalM a
-catch = error "TODO"
+catch m1 m2 = Free $ TryCatchOp m1 m2
+
+
+-- On KvGetOp key k effects, runEval’ should lookup the key in the
+-- state (the function lookup will be useful). If the key is contained in
+-- the state with value val, continue interpreting on k val. Otherwise,
+-- fail by returning a Left with an appropriate error message.
+
+-- On KvPutOp key val m effects, runEval’ should should insert the
+-- association (key, val) into the state. If the key already exists in
+-- the state, it should be replaced by the new association.
+
+
 
 evalKvGet :: Val -> EvalM Val
-evalKvGet = error "TODO"
+evalKvGet k = Free $ KvGetOp k pure
 
 evalKvPut :: Val -> Val -> EvalM ()
-evalKvPut = error "TODO"
+evalKvPut key val = Free $ KvPutOp key val (pure ())
+
+
+
+-- getState :: EvalM State
+-- getState = Free $ StateGetOp $ \s -> pure s
+
+-- putState :: State -> EvalM ()
+-- putState s = Free $ StatePutOp s $ pure ()
+
+
 
 transaction :: EvalM () -> EvalM ()
 transaction = error "TODO"
+
+
+
+
+
+-- TO EXECUTE:
+-- cabal repl
+-- :m *APL.[folder here]

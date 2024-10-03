@@ -67,14 +67,6 @@ catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
     (newSt, Left _) -> m2 env newSt
     (newSt, Right x) -> (newSt, Right x)
 
--- This is the updated and working code for question 3 in the report
--- catch :: EvalM a -> EvalM a -> EvalM a
--- catch (EvalM m1) (EvalM m2) = EvalM $ \env st ->
---   let (newSt, result) = m1 env st
---   in case result of
---     Left _ -> m2 env st  -- Use the original state if m1 fails
---     Right x -> (newSt, Right x)
-
 evalPrint :: String -> Val -> EvalM ()
 evalPrint s v = EvalM $ \_env (stList, kval) ->
   let st = s ++ ": " ++ showVal v
@@ -111,7 +103,6 @@ evalKvGet k = do
   case lookup k kval of
     Just v -> pure v
     Nothing  -> failure $ "Invalid key: " ++ show k
-
 
 evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut k v = do
