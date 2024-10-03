@@ -66,7 +66,41 @@ pureTests =
       --
       testCase "Let" $
         eval' (Let "x" (Add (CstInt 2) (CstInt 3)) (Var "x"))
-          @?= ([], Right (ValInt 5))
+          @?= ([], Right (ValInt 5)),
+      --
+      testCase "Let (shadowing)" $
+        eval'
+          ( Let
+              "x"
+              (Add (CstInt 2) (CstInt 3))
+              (Let "x" (CstBool True) (Var "x"))
+          )
+          @?= ([], Right (ValBool True)),
+      --
+      testCase "State" $
+        runEval
+          ( do
+              putState [(ValInt 0, ValInt 1)]
+              modifyState $ map (\(key, _) -> (key, ValInt 5))
+              getState
+          )
+          @?= ([], Right [(ValInt 0, ValInt 5)]),
+      --
+      testCase "Print" $
+        runEval (evalPrint "test")
+          @?= (["test"], Right ()),
+      --
+      testCase "Error" $
+        runEval
+          ( do
+              _ <- failure "Oh no!"
+              evalPrint "test"
+          )
+          @?= ([], Left "Oh no!"),
+      --
+      testCase "Div0" $
+        eval' (Div (CstInt 7) (CstInt 0))
+          @?= ([], Left "Division by zero")
     ]
 
 

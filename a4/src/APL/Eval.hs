@@ -5,7 +5,6 @@ where
 
 import APL.AST (Exp (..))
 import APL.Monad
--- import APL.InterpPure
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do

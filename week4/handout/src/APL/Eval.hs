@@ -1,13 +1,18 @@
 module APL.Eval
-  ( Val (..),
+  (
+  -- ( Val (..),
     eval,
-    runEval,
-    Error
+    -- runEval,
+    -- runEvalIO,
+    -- Error
   )
 where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (ap, liftM)
+import APL.InterpIO
+
+import qualified APL.Monad as M
 
 data Val
   = ValInt Integer
@@ -90,6 +95,12 @@ runEval (EvalM m) = do
   case m envEmpty stateEmpty of
     ((sList, _key), Left err) -> (sList, Left err)
     ((sList, _key), Right m') -> (sList, Right m')
+
+-- runEvalIO :: EvalM a -> IO (Either Error a)
+-- runEvalIO (EvalM m) = do
+  -- case m envEmpty stateEmpty of
+    -- ((sList, _key), Left err) -> Left err
+    -- ((sList, _key), Right m') -> Right m'
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
