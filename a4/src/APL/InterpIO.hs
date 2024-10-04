@@ -85,7 +85,12 @@ runEvalIO evalm = do
         Left err -> pure $ Left err
         Right s  -> case lookup key s of
           Just val -> runEvalIO' r db (k val)
-          Nothing -> pure $ Left $ "Key not found: " ++ show key
+          Nothing -> do
+            putStr $ "Invalid key: " ++ show key ++ ". "
+            result <- prompt "Enter a replacement: "
+            case readVal result of
+              Nothing -> pure $ Left $ "Invalid value input: " ++ result
+              Just val -> runEvalIO' r db (k val)
     runEvalIO' r db (Free (KvPutOp key val m)) = do
       dbState <- readDB db
       case dbState of
@@ -95,3 +100,5 @@ runEvalIO evalm = do
           writeDB db newState
           runEvalIO' r db m
 
+-- cabal repl
+-- :m *APL.Eval *APL.AST *APL.InterpPure *APL.InterpIO

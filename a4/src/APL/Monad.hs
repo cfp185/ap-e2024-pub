@@ -79,6 +79,7 @@ data EvalOp a
   | TryCatchOp a a
   | KvGetOp Val (Val -> a)
   | KvPutOp Val Val a
+  | TransactionOp (EvalM ()) a
 
 instance Functor EvalOp where
   fmap f (ReadOp k) = ReadOp $ f . k
@@ -89,6 +90,7 @@ instance Functor EvalOp where
   fmap f (TryCatchOp m1 m2) = TryCatchOp (f m1) (f m2)
   fmap f (KvGetOp key k) = KvGetOp key $ f . k
   fmap f (KvPutOp key val m) = KvPutOp key val $ f m
+  fmap f (TransactionOp e a) = TransactionOp e $ f a
 
 type EvalM a = Free EvalOp a
 
@@ -125,37 +127,15 @@ failure = Free . ErrorOp
 catch :: EvalM a -> EvalM a -> EvalM a
 catch m1 m2 = Free $ TryCatchOp m1 m2
 
-
--- On KvGetOp key k effects, runEval’ should lookup the key in the
--- state (the function lookup will be useful). If the key is contained in
--- the state with value val, continue interpreting on k val. Otherwise,
--- fail by returning a Left with an appropriate error message.
-
--- On KvPutOp key val m effects, runEval’ should should insert the
--- association (key, val) into the state. If the key already exists in
--- the state, it should be replaced by the new association.
-
-
-
 evalKvGet :: Val -> EvalM Val
 evalKvGet k = Free $ KvGetOp k pure
 
 evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut key val = Free $ KvPutOp key val (pure ())
 
-
-
--- getState :: EvalM State
--- getState = Free $ StateGetOp $ \s -> pure s
-
--- putState :: State -> EvalM ()
--- putState s = Free $ StatePutOp s $ pure ()
-
-
-
 transaction :: EvalM () -> EvalM ()
-transaction = error "TODO"
-
+-- transaction e = Free $ TransactionOp e $ pure ()
+transaction action = Free $ TransactionOp action (pure ())
 
 
 

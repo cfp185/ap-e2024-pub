@@ -109,11 +109,11 @@ ioTests =
           Free $ KvPutOp (ValInt 0) (ValInt 42) $ do
             Free $ KvGetOp (ValInt 0) pure
         result @?= Right (ValInt 42),
-      -- Test KvGetOp when the key does not exist
-      testCase "KvGetOp non-existing key" $ do
-        result <- runEvalIO $ do
-          Free $ KvGetOp (ValInt 999) pure
-        result @?= Left "Key not found: ValInt 999",
+      -- Test KvGetOp when the key does not exist           <-- OBS! OLD TEST
+      -- testCase "KvGetOp non-existing key" $ do
+      --   result <- runEvalIO $ do
+      --     Free $ KvGetOp (ValInt 999) pure
+      --   result @?= Left "Key not found: ValInt 999",
       -- Test StatePutOp and StateGetOp
       testCase "StatePutOp and StateGetOp" $ do
         result <- runEvalIO $ do
@@ -124,7 +124,22 @@ ioTests =
       testCase "TryCatchOp success" $ do
         result <- runEvalIO $ do
           Free $ TryCatchOp (Free $ ErrorOp "Test error") (pure (ValInt 10))
-        result @?= Right (ValInt 10)
+        result @?= Right (ValInt 10),
+      --
+      -- APL. Interp_Tests
+      testCase "Missing key test" $ do
+        (_, res) <- captureIO [" ValInt 1"] $ runEvalIO $
+          Free $ KvGetOp (ValInt 0) $ \val -> pure val
+        res @?= Right (ValInt 1)
+      --
+
+
+      --
+      -- testCase "Missing key test" $ do
+        -- (_, res) <- captureIO ["ValInt 1"] $
+        -- runEvalIO $
+        -- Free $ KvGetOp (ValInt 0) $ \val -> pure val
+        -- res @?= Right (ValInt 1),
 
         -- NOTE: This test will give a runtime error unless you replace the
         -- version of `eval` in `APL.Eval` with a complete version that supports
