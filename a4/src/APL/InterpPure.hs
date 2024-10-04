@@ -26,11 +26,29 @@ runEval = runEval' envEmpty stateInitial
     runEval' r s (Free (KvPutOp key val m)) =
       let newState = (key, val) : filter (\(k, _) -> k /= key) s
       in runEval' r newState m
-    runEval' r s (Free (TransactionOp e a)) = do
-      let result = runEval' r s e
-      in case result of
-          Left _ -> s
-          Right s' -> s'
+    runEval' r s (Free (TransactionOp e a)) =
+      let (str, res) = runEval' r s e
+      in case res of
+        Left _ -> let (str', res') = runEval' r s a
+                  in (str ++ str', res')
+        Right _ -> runEval' r s a
+
+
+
+
+
+
+-- ([],Left "Key not found: ValInt 0")
+
+-- ([],Right (ValInt 1))
+
 
 -- :m *APL.Eval *APL.AST *APL.InterpPure *APL.InterpIO
 
+
+
+
+-- > goodPut = evalKvPut (ValInt 0) (ValInt 1)
+-- > badPut = evalKvPut (ValInt 0) (ValBool False) >> failure "die"
+-- > get0 = KvGet (CstInt 0)
+-- > runEval $ transaction goodPut >> eval get0

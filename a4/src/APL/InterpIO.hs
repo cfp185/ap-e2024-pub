@@ -35,6 +35,14 @@ copyDB db db' = do
   s <- readFile' db
   writeFile db' s
 
+-- APL.InterpIO
+withTempDB :: (FilePath -> IO a) -> IO a
+withTempDB m = do
+  tempDB <- newTempDB -- Create a new temp database file.
+  res <- m tempDB -- Run the computation with the new file.
+  removeFile tempDB -- Delete the temp database file.
+  pure res -- Return the result of the computation.
+
 -- Removes all key-value pairs from the database file.
 clearDB :: IO ()
 clearDB = writeFile dbFile ""
@@ -42,17 +50,6 @@ clearDB = writeFile dbFile ""
 -- The name of the database file.
 dbFile :: FilePath
 dbFile = "db.txt"
-
--- Creates a fresh temporary database, passes it to a function returning an
--- IO-computation, executes the computation, deletes the temporary database, and
--- finally returns the result of the computation. The temporary database file is
--- guaranteed fresh and won't have a name conflict with any other files.
-withTempDB :: (FilePath -> IO a) -> IO a
-withTempDB m = do
-  tempDB <- newTempDB -- Create a new temp database file.
-  res <- m tempDB -- Run the computation with the new file.
-  removeFile tempDB -- Delete the temp database file.
-  pure res -- Return the result of the computation.
 
 runEvalIO :: EvalM a -> IO (Either Error a)
 runEvalIO evalm = do
@@ -99,6 +96,18 @@ runEvalIO evalm = do
           let newState = (key, val) : filter (\(k, _) -> k /= key) s
           writeDB db newState
           runEvalIO' r db m
+    runEvalIO' r db (Free (TransactionOp e a)) = withTempDB $ \tempDB -> do
+      copyDB db tempDB
+      result <- runEvalIO' r tempDB e
+      case result of
+        Left _ -> runEvalIO' r db a
+        Right _ -> do
+          copyDB tempDB db
+          runEvalIO' r db a
+
+
+
+-- runEvalIO $ transaction (evalPrint "weee" >> failure "oh shit")
 
 -- cabal repl
 -- :m *APL.Eval *APL.AST *APL.InterpPure *APL.InterpIO
