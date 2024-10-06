@@ -134,12 +134,4 @@ evalKvPut :: Val -> Val -> EvalM ()
 evalKvPut key val = Free $ KvPutOp key val (pure ())
 
 transaction :: EvalM () -> EvalM ()
--- transaction e = Free $ TransactionOp e $ pure ()
-transaction action = Free $ TransactionOp action (pure ())
-
-
-
-
--- TO EXECUTE:
--- cabal repl
--- :m *APL.[folder here]
+transaction action = Free $ TransactionOp action (pure ()

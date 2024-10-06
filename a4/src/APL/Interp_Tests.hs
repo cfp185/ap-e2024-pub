@@ -81,7 +81,31 @@ pureTests =
       -- Test KvGetOp when the key does not exist
       testCase "KvGetOp key not found" $
         runEval (Free $ KvGetOp (ValInt 999) $ \_ -> pure (ValInt 42))
-          @?= ([], Left "Key not found: ValInt 999")
+          @?= ([], Left "Invalid key: ValInt 999"),
+      --
+      testCase "Transaction - success" $
+        runEval (transaction (evalKvPut (ValInt 0) (ValInt 1)) >> eval (KvGet (CstInt 0)))
+          @?= ([], Right (ValInt 1)),
+      --
+      testCase "Transaction - failure" $
+        runEval (transaction (evalKvPut (ValInt 0) (ValBool False) >> failure "die") >> eval (KvGet (CstInt 0)))
+          @?= ([], Left "Invalid key: ValInt 0"),
+      --
+      testCase "Transaction - enclosed computation" $
+        runEval (transaction (evalKvPut (ValInt 0) (ValBool False) >> failure "die"))
+          @?= ([],Right ()),
+      --
+      testCase "Transaction - weee" $
+        runEval (transaction (evalPrint "weee" >> failure "oh shit"))
+          @?= (["weee"],Right ()),
+      --
+      testCase "Transaction - nested 1"  $
+        runEval (transaction ((evalKvPut (ValInt 0) (ValInt 1)) >> transaction (evalKvPut (ValInt 0) (ValBool False) >> failure "die")) >> eval (KvGet (CstInt 0)))
+          @?= ([],Right (ValInt 1)),
+      --
+      testCase "Transaction - nested 2" $
+        (runEval $ transaction (transaction (evalKvPut (ValInt 0) (ValBool False) >> failure "die")) >> eval (KvGet (CstInt 0)))
+          @?= ([],Left "Invalid key: ValInt 0")
     ]
 
 
@@ -103,7 +127,7 @@ ioTests =
         let expr = TryCatch (Eql (CstInt 0) (CstBool True)) (Div (CstInt 1) (CstInt 0))
         result <- runEvalIO (eval expr)
         result @?= Left "Division by zero",
-      -- Test KvPutOp and KvGetOp
+      --
       testCase "KvPutOp and KvGetOp" $ do
         result <- runEvalIO $ do
           Free $ KvPutOp (ValInt 0) (ValInt 42) $ do
@@ -114,32 +138,24 @@ ioTests =
       --   result <- runEvalIO $ do
       --     Free $ KvGetOp (ValInt 999) pure
       --   result @?= Left "Key not found: ValInt 999",
-      -- Test StatePutOp and StateGetOp
+      --
       testCase "StatePutOp and StateGetOp" $ do
         result <- runEvalIO $ do
           Free $ StatePutOp [(ValInt 0, ValInt 42)] $ do
             Free $ StateGetOp pure
         result @?= Right [(ValInt 0, ValInt 42)],
-      -- Test TryCatchOp for successful recovery
+      --
       testCase "TryCatchOp success" $ do
         result <- runEvalIO $ do
           Free $ TryCatchOp (Free $ ErrorOp "Test error") (pure (ValInt 10))
         result @?= Right (ValInt 10),
       --
-      -- APL. Interp_Tests
+      --
       testCase "Missing key test" $ do
         (_, res) <- captureIO [" ValInt 1"] $ runEvalIO $
           Free $ KvGetOp (ValInt 0) $ \val -> pure val
         res @?= Right (ValInt 1)
       --
-
-
-      --
-      -- testCase "Missing key test" $ do
-        -- (_, res) <- captureIO ["ValInt 1"] $
-        -- runEvalIO $
-        -- Free $ KvGetOp (ValInt 0) $ \val -> pure val
-        -- res @?= Right (ValInt 1),
 
         -- NOTE: This test will give a runtime error unless you replace the
         -- version of `eval` in `APL.Eval` with a complete version that supports

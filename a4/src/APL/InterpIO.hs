@@ -35,13 +35,12 @@ copyDB db db' = do
   s <- readFile' db
   writeFile db' s
 
--- APL.InterpIO
 withTempDB :: (FilePath -> IO a) -> IO a
 withTempDB m = do
-  tempDB <- newTempDB -- Create a new temp database file.
-  res <- m tempDB -- Run the computation with the new file.
-  removeFile tempDB -- Delete the temp database file.
-  pure res -- Return the result of the computation.
+  tempDB <- newTempDB
+  res <- m tempDB
+  removeFile tempDB
+  pure res
 
 -- Removes all key-value pairs from the database file.
 clearDB :: IO ()
@@ -104,10 +103,3 @@ runEvalIO evalm = do
         Right _ -> do
           copyDB tempDB db
           runEvalIO' r db a
-
-
-
--- runEvalIO $ transaction (evalPrint "weee" >> failure "oh shit")
-
--- cabal repl
--- :m *APL.Eval *APL.AST *APL.InterpPure *APL.InterpIO
