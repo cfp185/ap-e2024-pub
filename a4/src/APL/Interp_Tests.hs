@@ -12,8 +12,8 @@ import Test.Tasty.HUnit (testCase, (@?=))
 eval' :: Exp -> ([String], Either Error Val)
 eval' = runEval . eval
 
-evalIO' :: Exp -> IO (Either Error Val)
-evalIO' = runEvalIO . eval
+-- evalIO' :: Exp -> IO (Either Error Val)
+-- evalIO' = runEvalIO . eval
 
 tests :: TestTree
 tests = testGroup "Free monad interpreters" [pureTests, ioTests]

@@ -5,8 +5,8 @@ where
 
 import APL.AST (Exp (..))
 import APL.Monad
-import APL.InterpPure
-import APL.InterpIO
+import APL.InterpPure()
+import APL.InterpIO()
 
 evalIntBinOp :: (Integer -> Integer -> EvalM Integer) -> Exp -> Exp -> EvalM Val
 evalIntBinOp f e1 e2 = do
