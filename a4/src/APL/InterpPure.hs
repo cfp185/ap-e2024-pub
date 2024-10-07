@@ -27,7 +27,7 @@ runEval evalm =
         Nothing -> (s, [], Left $ "Invalid key: " ++ show key)
     runEval' r s (Free (KvPutOp key val m)) =
       let newState = (key, val) : filter (\(k, _) -> k /= key) s
-      in runEval' r newState m
+      in runEval' r newState m 
     runEval' r s (Free (TransactionOp e a)) =
       let (s', str', res') = runEval' r s e
       in case res' of
