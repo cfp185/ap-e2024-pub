@@ -1,4 +1,4 @@
-module APL.Parser (parseAPL) where
+module APL.Parser (parseAPL, keywords) where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (void)
@@ -47,14 +47,30 @@ lVName = lexeme $ try $ do
     then fail "Unexpected keyword"
     else pure v
 
+-- lInteger :: Parser Integer
+-- lInteger = lexeme $ do
+--   sign <- optional (lString "-")
+--   digits <- some (satisfy isDigit)
+--   let number = read digits
+--   return $ case sign of
+--     Just _  -> -number  
+--     Nothing -> number
+
 lInteger :: Parser Integer
 lInteger = lexeme $ do
-  sign <- optional (lString "-") 
   digits <- some (satisfy isDigit)
-  let number = read digits
-  return $ case sign of
-    Just _  -> -number  
-    Nothing -> number   
+  return $ read digits
+
+pUExp :: Parser Exp
+pUExp =
+  choice
+    [ do 
+        lString "-"
+        Neg <$> pUExp,
+      pLExp
+    ]
+
+
 
 --lInteger :: Parser Integer
 --lInteger =
@@ -73,15 +89,14 @@ lBool =
       const False <$> lKeyword "false"
     ]
 
-isIntegerExp :: Exp -> Bool
-isIntegerExp (CstInt _) = True
-isIntegerExp _          = False
-
-ensureInteger :: Exp -> String -> Parser Exp
-ensureInteger exp op
-  | isIntegerExp exp = pure exp
-  | otherwise = fail $ "Expected integer operands for " ++ op
-
+-- pAtom :: Parser Exp
+-- pAtom =
+--   choice
+--     [ CstInt <$> lInteger,
+--       CstBool <$> lBool,
+--       Var <$> lVName,
+--       lString "(" *> pExp <* lString ")"
+--     ]
 
 pAtom :: Parser Exp
 pAtom =
@@ -89,9 +104,15 @@ pAtom =
     [ CstInt <$> lInteger,
       CstBool <$> lBool,
       Var <$> lVName,
-      lString "(" *> pExp <* lString ")"
+      lString "(" *> choice
+        [ TryCatch
+            <$> (lKeyword "try" *> pExp)
+            <*> (lKeyword "catch" *> pExp),  -- TryCatch with parentheses
+          pExp
+        ] <* lString ")"
     ]
 
+-- Parser for Unary Expressions
 pFExp :: Parser Exp
 pFExp = chain =<< pAtom
   where
@@ -123,47 +144,20 @@ pLExp =
       pFExp
     ]
 
--- pExp4 :: Parser Exp
--- pExp4 = pLExp >>= chain
---   where
---     chain x =
---       choice
---         [ do
---             lString "**"
---             y <- pLExp
---             Pow x <$> chain y,
---           pure x
---         ]
-
 pExp4 :: Parser Exp
-pExp4 = pLExp >>= chain
+--pExp4 = pLExp >>= chain
+pExp4 = pUExp >>= chain
   where
     chain x =
       choice
         [ do
             lString "**"
-            y <- pLExp
-            ensureInteger x "**"
-            ensureInteger y "**"
+            y <- pExp4
+            --y <- pUExp
+            --y <- pLExp
             Pow x <$> chain y,
           pure x
         ]
-
--- pExp3 :: Parser Exp
--- pExp3 = pExp4 >>= chain
---   where
---     chain x =
---       choice
---         [ do
---             lString "*"
---             y <- pExp4
---             chain $ Mul x y,
---           do
---             lString "/"
---             y <- pExp4
---             chain $ Div x y,
---           pure x
---         ]
 
 pExp3 :: Parser Exp
 pExp3 = pExp4 >>= chain
@@ -173,33 +167,13 @@ pExp3 = pExp4 >>= chain
         [ do
             lString "*"
             y <- pExp4
-            ensureInteger x "*"
-            ensureInteger y "*"
             chain $ Mul x y,
           do
             lString "/"
             y <- pExp4
-            ensureInteger x "/"
-            ensureInteger y "/"
             chain $ Div x y,
           pure x
         ]
-
--- pExp2 :: Parser Exp
--- pExp2 = pExp3 >>= chain
---   where
---     chain x =
---       choice
---         [ do
---             lString "+"
---             y <- pExp3
---             chain $ Add x y,
---           do
---             lString "-"
---             y <- pExp3
---             chain $ Sub x y,
---           pure x
---         ]
 
 pExp2 :: Parser Exp
 pExp2 = pExp3 >>= chain
@@ -209,14 +183,10 @@ pExp2 = pExp3 >>= chain
         [ do
             lString "+"
             y <- pExp3
-            ensureInteger x "+"   -- Check if x is an integer
-            ensureInteger y "+"   -- Check if y is an integer
             chain $ Add x y,
           do
             lString "-"
             y <- pExp3
-            ensureInteger x "-"
-            ensureInteger y "-"
             chain $ Sub x y,
           pure x
         ]
@@ -240,3 +210,4 @@ parseAPL :: FilePath -> String -> Either String Exp
 parseAPL fname s = case parse (space *> pExp <* eof) fname s of
   Left err -> Left $ errorBundlePretty err
   Right x -> Right x
+

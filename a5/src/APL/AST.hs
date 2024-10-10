@@ -11,6 +11,7 @@ type VName = String
 data Exp
   = CstInt Integer
   | CstBool Bool
+  | Neg Exp
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp
@@ -24,6 +25,7 @@ data Exp
   | Apply Exp Exp
   | TryCatch Exp Exp
   deriving (Eq, Show)
+
 
 parens :: String -> String
 parens x = "(" ++ x ++ ")"
@@ -61,9 +63,9 @@ printExp (Let v e1 e2) =
 printExp (Lambda v body) =
   parens $ "\\" ++ v ++ " -> " ++ printExp body
 printExp (Apply x y) =
-  printExp x ++ " " ++ printExp y
+  "(" ++ printExp x ++ " " ++ printExp y ++ ")"
 printExp (TryCatch x y) =
-  "try " ++ printExp x ++ " catch " ++ printExp y
+  "(try " ++ printExp x ++ " catch " ++ printExp y ++ ")"
 
 subExp :: Exp -> [Exp]
 subExp e = e : case e of
@@ -81,3 +83,16 @@ subExp e = e : case e of
   Lambda _ body -> subExp body
   Apply e1 e2 -> subExp e1 ++ subExp e2
   TryCatch e1 e2 -> subExp e1 ++ subExp e2
+
+
+-- ghci:
+-- Let "kf" (Var "ceisiefbj") (CstInt (-1))
+-- (Let "kf" (Var "ceisiefbj") (Neg (CstInt 1)))
+
+-- AST.hs:
+-- printExp (Let "kf" (Var "ceisiefbj") (CstInt (-1)))
+-- "(let kf = ceisiefbj in -1)"
+
+-- Parser.hs:
+-- parseAPL "input" "(let kf = ceisiefbj in -1)"
+-- (Let "kf" (Var "ceisiefbj") (Neg (CstInt 1)))
