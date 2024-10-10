@@ -11,7 +11,6 @@ type VName = String
 data Exp
   = CstInt Integer
   | CstBool Bool
-  | Neg Exp
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp
@@ -34,15 +33,15 @@ printBinOp :: String -> Exp -> Exp -> String
 printBinOp op x y = parens $ printExp x ++ " " ++ op ++ " " ++ printExp y
 
 printExp :: Exp -> String
-printExp (CstInt x) = show x
---printExp (CstInt x) = if x < 0 then "(" ++ show x ++ ")" else show x
+-- printExp (CstInt x) = show x
+printExp (CstInt x) = if x < 0 then "(" ++ show x ++ ")" else show x
 printExp (CstBool b) = if b then "true" else "false"
-printExp (Add x y) = printBinOp "+" x y
-printExp (Sub x y) = printBinOp "-" x y
-printExp (Mul x y) = printBinOp "*" x y
-printExp (Div x y) = printBinOp "/" x y
-printExp (Pow x y) = printBinOp "**" x y
-printExp (Eql x y) = printBinOp "==" x y
+printExp (Add x y) = parens $ printBinOp "+" x y
+printExp (Sub x y) = parens $ printBinOp "-" x y
+printExp (Mul x y) = parens $ printBinOp "*" x y
+printExp (Div x y) = parens $ printBinOp "/" x y
+printExp (Pow x y) = parens $ printBinOp "**" x y
+printExp (Eql x y) = parens $ printBinOp "==" x y
 printExp (If x y z) =
   parens $
     "if "
@@ -51,7 +50,7 @@ printExp (If x y z) =
       ++ printExp y
       ++ " else "
       ++ printExp z
-printExp (Var v) = v
+printExp (Var v) = parens v
 printExp (Let v e1 e2) =
   parens $
     "let "
@@ -63,9 +62,9 @@ printExp (Let v e1 e2) =
 printExp (Lambda v body) =
   parens $ "\\" ++ v ++ " -> " ++ printExp body
 printExp (Apply x y) =
-  "(" ++ printExp x ++ " " ++ printExp y ++ ")"
+  parens $ printExp x ++ " " ++ printExp y 
 printExp (TryCatch x y) =
-  "(try " ++ printExp x ++ " catch " ++ printExp y ++ ")"
+  parens $ "try " ++ printExp x ++ " catch " ++ printExp y
 
 subExp :: Exp -> [Exp]
 subExp e = e : case e of
@@ -85,14 +84,16 @@ subExp e = e : case e of
   TryCatch e1 e2 -> subExp e1 ++ subExp e2
 
 
--- ghci:
--- Let "kf" (Var "ceisiefbj") (CstInt (-1))
--- (Let "kf" (Var "ceisiefbj") (Neg (CstInt 1)))
+-- ghci error:
+-- Let "pbcjrckg" (Apply (CstInt (-2)) (CstInt 2)) (Var "pbcjrckg")
+
+
 
 -- AST.hs:
--- printExp (Let "kf" (Var "ceisiefbj") (CstInt (-1)))
--- "(let kf = ceisiefbj in -1)"
+-- printExp (Let "pbcjrckg" (Apply (CstInt (-2)) (CstInt 2)) (Var "pbcjrckg"))
+-- "(let pbcjrckg = ((-2) 2) in (pbcjrckg))"
+
 
 -- Parser.hs:
--- parseAPL "input" "(let kf = ceisiefbj in -1)"
--- (Let "kf" (Var "ceisiefbj") (Neg (CstInt 1)))
+-- parseAPL "input" "(let pbcjrckg = ((-2) 2) in (pbcjrckg))"
+-- 

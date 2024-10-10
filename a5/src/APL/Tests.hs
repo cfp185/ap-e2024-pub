@@ -14,7 +14,6 @@ import Test.QuickCheck
   , property
   , cover
   , checkCoverage
-  , oneof
   , sized
   , frequency
   , vectorOf
@@ -50,7 +49,6 @@ instance Arbitrary Exp where
     e1 : e2 : [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
   shrink _ = []
 
-
 -- genVar :: Gen String
 -- genVar = frequency
 --   [ (70, do n <- elements [2..4]; vectorOf n (elements ['a'..'z']), if v `elem` keywords then genVar else return v)
@@ -69,66 +67,39 @@ genVar = frequency
       if v `elem` keywords then genVar else return v)  -- Avoid keywords
   ]
 
+-- weights på 0 for at finde fejlene
+-- i print er der ændret 2 steder og noget nogle andre steder måske men nok ikke i parser
+-- printExps parenteser
+-- negative tal -> absolutte værdi
+-- cnstInt generes to steder de skal begge fikses
+
+
 genVarFromVars :: [VName] -> Gen VName
 genVarFromVars vars =
   if null vars then genVar
   else elements vars
 
 genExp :: Int -> [VName] -> Gen Exp
-genExp 0 vars = frequency
-  [ (2, CstInt <$> arbitrary)
+genExp 0 vars = frequency 
+  [ (2, CstInt . abs <$> arbitrary)
   , (2, CstBool <$> arbitrary)
-  , (2, Var <$> genVarFromVars vars)
-  ]
+  , (1, Var <$> genVarFromVars vars)
+  ]                          
 genExp size vars = frequency
-  [ (2, CstInt <$> arbitrary)
+  [ (2, CstInt . abs <$> arbitrary)
   , (2, CstBool <$> arbitrary)
-  , (1, do
-      e1 <- genExp halfSize vars
-      e2 <- genExp halfSize vars
-      case (e1, e2) of
-        (CstInt _, CstInt _) -> return (Add e1 e2) 
-        _ -> genExp size vars
-    )
-   --Add <$> genExp halfSize vars <*> genExp halfSize vars)
-  , (1, do
-      e1 <- genExp halfSize vars
-      e2 <- genExp halfSize vars
-      case (e1, e2) of
-        (CstInt _, CstInt _) -> return (Sub e1 e2)  
-        _ -> genExp size vars 
-    )
-  -- Sub <$> genExp halfSize vars <*> genExp halfSize vars)
-  , (1,  do
-      e1 <- genExp halfSize vars
-      e2 <- genExp halfSize vars
-      case (e1, e2) of
-        (CstInt _, CstInt _) -> return (Mul e1 e2) 
-        _ -> genExp size vars 
-    )
-  --Mul <$> genExp halfSize vars <*> genExp halfSize vars)
-  , (16, do
-      e1 <- genExp halfSize vars
-      e2 <- genExp halfSize vars
-      case (e1, e2) of
-        (CstInt _, CstInt _) -> return (Div e1 e2) 
-        _ -> genExp size vars 
-    )
-  -- Div <$> genExp halfSize vars <*> genExp halfSize vars)
-  , (16,  do
-      e1 <- genExp halfSize vars
-      e2 <- genExp halfSize vars
-      case (e1, e2) of
-        (CstInt _, CstInt _) -> return (Pow e1 e2)
-        _ -> genExp size vars
-    )
-  --Pow <$> genExp halfSize vars <*> genExp halfSize vars)
+  , (1, Add <$> genExp halfSize vars <*> genExp halfSize vars)
+  , (1, Sub <$> genExp halfSize vars <*> genExp halfSize vars)
+  , (1, Mul <$> genExp halfSize vars <*> genExp halfSize vars)
+  , (2, Div <$> genExp halfSize vars <*> genExp halfSize vars)
+  , (2, Pow <$> genExp halfSize vars <*> genExp halfSize vars)
   , (2, Eql <$> genExp halfSize vars <*> genExp halfSize vars)
-  , (2, Var <$> genVarFromVars vars)
+  , (1, Var <$> genVarFromVars vars)
   , (1, If <$> genExp thirdSize vars <*> genExp thirdSize vars <*> genExp thirdSize vars) 
-  , (12, do
+  , (8, do
       newVar <- genVar
       Let newVar <$> genExp halfSize vars <*> genExp halfSize (newVar : vars))
+      -- Let newVar <$> genExp halfSize (newVar : vars) <*> genExp halfSize (newVar : vars))
   , (12, do
       newVar <- genVar
       Lambda newVar <$> genExp halfSize (newVar : vars))
@@ -150,13 +121,11 @@ expCoverage e = checkCoverage
   . cover 50 (or [2 <= n && n <= 4 | Var v <- subExp e, let n = length v]) "non-trivial variable"
   $ ()
 
-
 parsePrinted :: Exp -> Bool
 parsePrinted e =
   case parseAPL "input" (printExp e) of
     Right e' -> e' == e
     _ -> False
-
 
 onlyCheckedErrors :: Exp -> Bool
 onlyCheckedErrors _ = undefined
@@ -169,7 +138,10 @@ properties =
   ]
 
 
+--generator MÅ ikke lave negative tal
+
 -- :m *APL.Eval *APL.AST *APL.Check *APL.Error *APL.Tests *APL.Parser
 -- :m + Test.QuickCheck APL.Tests
 -- quickCheck expCoverage
 -- quickCheck parsePrinted
+-- quickCheck $ withMaxSuccess 1000 expCoverag

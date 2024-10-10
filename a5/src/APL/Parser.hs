@@ -16,7 +16,6 @@ import Text.Megaparsec
     satisfy,
     some,
     try,
-    optional
   )
 import Text.Megaparsec.Char (space)
 
@@ -47,34 +46,9 @@ lVName = lexeme $ try $ do
     then fail "Unexpected keyword"
     else pure v
 
--- lInteger :: Parser Integer
--- lInteger = lexeme $ do
---   sign <- optional (lString "-")
---   digits <- some (satisfy isDigit)
---   let number = read digits
---   return $ case sign of
---     Just _  -> -number  
---     Nothing -> number
-
 lInteger :: Parser Integer
-lInteger = lexeme $ do
-  digits <- some (satisfy isDigit)
-  return $ read digits
-
-pUExp :: Parser Exp
-pUExp =
-  choice
-    [ do 
-        lString "-"
-        Neg <$> pUExp,
-      pLExp
-    ]
-
-
-
---lInteger :: Parser Integer
---lInteger =
---  lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
+lInteger =
+  lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
 
 lString :: String -> Parser ()
 lString s = lexeme $ void $ chunk s
@@ -89,30 +63,15 @@ lBool =
       const False <$> lKeyword "false"
     ]
 
--- pAtom :: Parser Exp
--- pAtom =
---   choice
---     [ CstInt <$> lInteger,
---       CstBool <$> lBool,
---       Var <$> lVName,
---       lString "(" *> pExp <* lString ")"
---     ]
-
 pAtom :: Parser Exp
 pAtom =
   choice
     [ CstInt <$> lInteger,
       CstBool <$> lBool,
       Var <$> lVName,
-      lString "(" *> choice
-        [ TryCatch
-            <$> (lKeyword "try" *> pExp)
-            <*> (lKeyword "catch" *> pExp),  -- TryCatch with parentheses
-          pExp
-        ] <* lString ")"
+      lString "(" *> pExp <* lString ")"
     ]
 
--- Parser for Unary Expressions
 pFExp :: Parser Exp
 pFExp = chain =<< pAtom
   where
@@ -145,16 +104,13 @@ pLExp =
     ]
 
 pExp4 :: Parser Exp
---pExp4 = pLExp >>= chain
-pExp4 = pUExp >>= chain
+pExp4 = pLExp >>= chain
   where
     chain x =
       choice
         [ do
             lString "**"
-            y <- pExp4
-            --y <- pUExp
-            --y <- pLExp
+            y <- pLExp
             Pow x <$> chain y,
           pure x
         ]
@@ -210,4 +166,3 @@ parseAPL :: FilePath -> String -> Either String Exp
 parseAPL fname s = case parse (space *> pExp <* eof) fname s of
   Left err -> Left $ errorBundlePretty err
   Right x -> Right x
-
