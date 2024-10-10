@@ -3,6 +3,7 @@ module APL.Tests
   )
 where
 
+import APL.Eval(runEval, eval)
 import APL.AST (Exp (..), subExp, VName, printExp)
 import APL.Parser(parseAPL, keywords)
 import APL.Error (isVariableError, isDomainError, isTypeError)
@@ -22,7 +23,6 @@ import Test.QuickCheck
   )
 
 instance Arbitrary Exp where
-  --arbitrary = sized genExp
   arbitrary = sized (`genExp` [])
 
   shrink (Add e1 e2) =
@@ -49,30 +49,17 @@ instance Arbitrary Exp where
     e1 : e2 : [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
   shrink _ = []
 
--- genVar :: Gen String
--- genVar = frequency
---   [ (70, do n <- elements [2..4]; vectorOf n (elements ['a'..'z']), if v `elem` keywords then genVar else return v)
---   , (30, do n <- chooseInt (5, 10); vectorOf n (elements ['a'..'z']), if v `elem` keywords then genVar else return v)
---   ]
-
 genVar :: Gen String
 genVar = frequency
   [ (70, do
       n <- elements [2..4]
       v <- vectorOf n (elements ['a'..'z'])
-      if v `elem` keywords then genVar else return v)  -- Avoid keywords
+      if v `elem` keywords then genVar else return v)
   , (30, do
       n <- chooseInt (5, 10)
       v <- vectorOf n (elements ['a'..'z'])
-      if v `elem` keywords then genVar else return v)  -- Avoid keywords
+      if v `elem` keywords then genVar else return v)
   ]
-
--- weights på 0 for at finde fejlene
--- i print er der ændret 2 steder og noget nogle andre steder måske men nok ikke i parser
--- printExps parenteser
--- negative tal -> absolutte værdi
--- cnstInt generes to steder de skal begge fikses
-
 
 genVarFromVars :: [VName] -> Gen VName
 genVarFromVars vars =
@@ -99,7 +86,6 @@ genExp size vars = frequency
   , (8, do
       newVar <- genVar
       Let newVar <$> genExp halfSize vars <*> genExp halfSize (newVar : vars))
-      -- Let newVar <$> genExp halfSize (newVar : vars) <*> genExp halfSize (newVar : vars))
   , (12, do
       newVar <- genVar
       Lambda newVar <$> genExp halfSize (newVar : vars))
@@ -128,7 +114,13 @@ parsePrinted e =
     _ -> False
 
 onlyCheckedErrors :: Exp -> Bool
-onlyCheckedErrors _ = undefined
+onlyCheckedErrors e =
+  case runEval (eval e) of
+    Right _ -> True
+    Left err ->
+      let errList = checkExp e
+      in err `elem` errList
+ 
 
 properties :: [(String, Property)]
 properties =
@@ -137,11 +129,3 @@ properties =
   , ("parsePrinted", property parsePrinted)
   ]
 
-
---generator MÅ ikke lave negative tal
-
--- :m *APL.Eval *APL.AST *APL.Check *APL.Error *APL.Tests *APL.Parser
--- :m + Test.QuickCheck APL.Tests
--- quickCheck expCoverage
--- quickCheck parsePrinted
--- quickCheck $ withMaxSuccess 1000 expCoverag

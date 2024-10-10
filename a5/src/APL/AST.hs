@@ -33,15 +33,14 @@ printBinOp :: String -> Exp -> Exp -> String
 printBinOp op x y = parens $ printExp x ++ " " ++ op ++ " " ++ printExp y
 
 printExp :: Exp -> String
--- printExp (CstInt x) = show x
-printExp (CstInt x) = if x < 0 then "(" ++ show x ++ ")" else show x
+printExp (CstInt x) = show x
 printExp (CstBool b) = if b then "true" else "false"
-printExp (Add x y) = parens $ printBinOp "+" x y
-printExp (Sub x y) = parens $ printBinOp "-" x y
-printExp (Mul x y) = parens $ printBinOp "*" x y
-printExp (Div x y) = parens $ printBinOp "/" x y
-printExp (Pow x y) = parens $ printBinOp "**" x y
-printExp (Eql x y) = parens $ printBinOp "==" x y
+printExp (Add x y) = printBinOp "+" x y
+printExp (Sub x y) = printBinOp "-" x y
+printExp (Mul x y) = printBinOp "*" x y
+printExp (Div x y) = printBinOp "/" x y
+printExp (Pow x y) = printBinOp "**" x y
+printExp (Eql x y) = printBinOp "==" x y
 printExp (If x y z) =
   parens $
     "if "
@@ -82,18 +81,3 @@ subExp e = e : case e of
   Lambda _ body -> subExp body
   Apply e1 e2 -> subExp e1 ++ subExp e2
   TryCatch e1 e2 -> subExp e1 ++ subExp e2
-
-
--- ghci error:
--- Let "pbcjrckg" (Apply (CstInt (-2)) (CstInt 2)) (Var "pbcjrckg")
-
-
-
--- AST.hs:
--- printExp (Let "pbcjrckg" (Apply (CstInt (-2)) (CstInt 2)) (Var "pbcjrckg"))
--- "(let pbcjrckg = ((-2) 2) in (pbcjrckg))"
-
-
--- Parser.hs:
--- parseAPL "input" "(let pbcjrckg = ((-2) 2) in (pbcjrckg))"
--- 
