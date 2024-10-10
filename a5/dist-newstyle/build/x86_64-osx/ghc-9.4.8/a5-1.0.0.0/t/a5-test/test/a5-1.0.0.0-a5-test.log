@@ -1,0 +1,37 @@
+Test suite a5-test: RUNNING...
+APL properties
+  expCoverage:       FAIL
+    *** Failed! Insufficient coverage (after 100 tests):
+    85% type error
+    85% variable error
+    84% non-trivial variable
+    81% domain error
+    19% no domain error
+    15% no type error
+    15% no variable error
+    
+    Only 15% no variable error, but expected 70%
+    Use --quickcheck-replay="(SMGen 12928475590231037582 6621845247021158535,99)" to reproduce.
+    Use -p '/expCoverage/' to rerun this test only.
+  onlyCheckedErrors: FAIL
+    *** Failed! (after 1 test):
+    Exception:
+      Prelude.undefined
+      CallStack (from HasCallStack):
+        undefined, called at src/APL/Tests.hs:103:23 in a5-1.0.0.0-inplace:APL.Tests
+    CstBool True
+    Use --quickcheck-replay="(SMGen 383031071685056704 6181893827192800009,0)" to reproduce.
+    Use -p '/onlyCheckedErrors/' to rerun this test only.
+  parsePrinted:      FAIL
+    *** Failed! (after 1 test):
+    Exception:
+      Prelude.undefined
+      CallStack (from HasCallStack):
+        undefined, called at src/APL/Tests.hs:100:18 in a5-1.0.0.0-inplace:APL.Tests
+    CstBool False
+    Use --quickcheck-replay="(SMGen 11494308398400879302 3657893817504500265,0)" to reproduce.
+    Use -p '/parsePrinted/' to rerun this test only.
+
+3 out of 3 tests failed (0.00s)
+Test suite a5-test: FAIL
+Test suite logged to: /Users/juliebrinch/Documents/ap-e2024-pub/a5/dist-newstyle/build/x86_64-osx/ghc-9.4.8/a5-1.0.0.0/t/a5-test/test/a5-1.0.0.0-a5-test.log
