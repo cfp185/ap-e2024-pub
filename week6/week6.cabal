@@ -12,9 +12,9 @@ library
     hs-source-dirs: src
     build-depends:
         base
-      , tasty
-      , tasty-hunit
-      , clock
+        , tasty
+        , tasty-hunit
+        , clock
     exposed-modules:
         SPC
         SPC_Tests
@@ -26,5 +26,5 @@ test-suite week6-tests
     main-is: runtests.hs
     build-depends:
         base
-      , tasty
-      , week6
+        , tasty
+        , week6
