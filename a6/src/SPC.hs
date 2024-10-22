@@ -247,7 +247,8 @@ jobCancel (SPC c) jobid =
 -- | Add a new worker with this name. Fails with 'Left' if a worker
 -- with that name already exists.
 workerAdd :: SPC -> WorkerName -> IO (Either String Worker)
-workerAdd = undefined
+workerAdd = 
+
 
 -- | Shut down a running worker. No effect if the worker is already
 -- terminated.
